@@ -1,0 +1,43 @@
+🎯 EXAM QUICK REFERENCE — What To Change
+
+TASK 1: RAG PIPELINE
+ingest.py (Run FIRST)
+DATA_DIR = 'data'              ← Folder with .txt files
+EMBEDDING_MODEL = 'nomic-embed-text'  ← Or 'llama3.1'
+CHUNK_SIZE = 2000              ← Characters per chunk
+CHUNK_OVERLAP = 50             ← Overlap between chunks
+rag_chain.py (Run SECOND)
+EMBEDDING_MODEL = '...'        ← MUST MATCH ingest.py!
+LLM_MODEL = 'llama3.1'         ← Model for answers
+NUM_RESULTS = 3                ← How many chunks to find
+question = "..."               ← YOUR QUESTION HERE
+⚠️ IMPORTANT: EMBEDDING_MODEL must be SAME in both files!
+
+TASK 2: BLIP
+blip_caption.py
+IMAGE_PATH = r"images/test.jpg"    ← YOUR IMAGE PATH
+TEXT_PROMPT = "a photo of"         ← For conditional caption
+QUESTION = "What is in the image?" ← For Q&A
+
+NOTHING ELSE CHANGES!
+All imports, functions, logic — keep exactly as is.
+
+EXAM STEPS
+RAG:
+
+Put .txt files in data/ folder
+Run python ingest.py
+Change question in rag_chain.py
+Run python rag_chain.py
+
+BLIP:
+
+Change IMAGE_PATH to your image
+Run python blip_caption.py
+
+
+COMMON MISTAKES TO AVOID
+❌ Don't name file ollama.py
+❌ Don't forget to run ollama serve
+❌ Don't use different EMBEDDING_MODEL in two files
+❌ Don't forget r"" for Windows paths

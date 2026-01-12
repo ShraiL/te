@@ -1,0 +1,102 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# FINAL EXAM CHEAT SHEET - ALL CODE ON ONE PAGE
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ╔════════════════════════════════════════════════════════════════════════════╗
+# ║  PART 1: RAG - INGEST.PY (Load Documents)                                  ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+
+import os
+from langchain_community.document_loaders import TextLoader
+from langchain_community.vectorstores import Chroma
+from langchain_ollama import OllamaEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+DATA_DIR = 'data'
+DB_DIR = 'vectorstore'
+
+# Load all .txt files
+docs = []
+for f in os.listdir(DATA_DIR):
+    if f.endswith('.txt'):
+        loader = TextLoader(os.path.join(DATA_DIR, f), autodetect_encoding=True)
+        docs.extend(loader.load())
+
+# Split into chunks
+splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=50)
+chunks = splitter.split_documents(docs)
+
+# Embed and store
+embeddings = OllamaEmbeddings(model='nomic-embed-text')
+db = Chroma.from_documents(chunks, embeddings, persist_directory=DB_DIR)
+db.persist()
+
+
+# ╔════════════════════════════════════════════════════════════════════════════╗
+# ║  PART 2: RAG - RAG_CHAIN.PY (Ask Questions)                                ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+
+from langchain_community.vectorstores import Chroma
+from langchain_ollama import OllamaEmbeddings
+from langchain_community.llms import Ollama
+from langchain_core.prompts import PromptTemplate
+
+emb = OllamaEmbeddings(model='nomic-embed-text')
+db = Chroma(persist_directory='vectorstore', embedding_function=emb)
+retriever = db.as_retriever(search_kwargs={"k": 3})
+llm = Ollama(model='llama3.1')
+
+prompt = PromptTemplate(
+    template="Context: {context}\n\nQuestion: {question}\n\nAnswer:",
+    input_variables=["context", "question"]
+)
+
+def ask(question):
+    docs = retriever.invoke(question)
+    context = "\n".join([d.page_content for d in docs])
+    return llm.invoke(prompt.format(context=context, question=question))
+
+print(ask("What is machine learning?"))
+
+
+# ╔════════════════════════════════════════════════════════════════════════════╗
+# ║  PART 3: BLIP (Image to Text)                                              ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+
+from transformers import BlipProcessor, BlipForConditionalGeneration
+from PIL import Image
+
+processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+
+image = Image.open("images/test.jpg")
+
+# Basic caption
+inputs = processor(image, return_tensors="pt")
+outputs = model.generate(**inputs)
+caption = processor.decode(outputs[0], skip_special_tokens=True)
+print(caption)
+
+# Conditional caption (with prompt)
+inputs = processor(image, "a photo of", return_tensors="pt")
+outputs = model.generate(**inputs)
+caption = processor.decode(outputs[0], skip_special_tokens=True)
+print(caption)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# QUICK REFERENCE
+# ══════════════════════════════════════════════════════════════════════════════
+# OLLAMA COMMANDS:
+#   ollama serve          ← Start server (keep running!)
+#   ollama pull llama3.1  ← Download model
+#   ollama pull nomic-embed-text
+#   ollama list           ← See installed models
+#
+# MODELS:
+#   Embeddings: nomic-embed-text (or llama3.1)
+#   LLM: llama3.1 (or llama3.2)
+#   BLIP: Salesforce/blip-image-captioning-base
+#
+# NEVER NAME YOUR FILE: ollama.py, transformers.py, torch.py
+# ══════════════════════════════════════════════════════════════════════════════
